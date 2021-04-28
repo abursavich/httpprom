@@ -55,14 +55,14 @@ type handlerConfig struct {
 	name          string
 	handler       http.Handler
 	pendingBefore beforeFunc
-	pendingAfter  afterFunc
+	pendingDefer  beforeFunc
 	requestAfter  afterFunc
 }
 
 func (h *handlerConfig) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	method := lookupMethod(r.Method)
 	h.pendingBefore(h.name, method)
-	defer h.pendingAfter(h.name, method, "") // code doesn't matter for pending
+	defer h.pendingDefer(h.name, method)
 
 	d := promhttp.NewDelegator(w)
 	h.handler.ServeHTTP(d, r)
@@ -121,7 +121,7 @@ func (mux *ServeMux) Handle(pattern string, handler http.Handler, options ...Han
 		name:          pattern,
 		handler:       handler,
 		pendingBefore: mux.pendingBeforeFunc(),
-		pendingAfter:  mux.pendingAfterFunc(),
+		pendingDefer:  mux.pendingDeferFunc(),
 		requestAfter:  mux.requestsAfterFunc(),
 	}
 	for _, opt := range options {
@@ -150,14 +150,14 @@ func (mux *ServeMux) pendingBeforeFunc() beforeFunc {
 	}
 }
 
-func (mux *ServeMux) pendingAfterFunc() afterFunc {
+func (mux *ServeMux) pendingDeferFunc() beforeFunc {
 	switch {
 	case mux.method:
-		return func(handler, method, code string) {
+		return func(handler, method string) {
 			mux.pending.WithLabelValues(handler, method).Dec()
 		}
 	default:
-		return func(handler, method, code string) {
+		return func(handler, method string) {
 			mux.pending.WithLabelValues(handler).Dec()
 		}
 	}
