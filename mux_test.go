@@ -67,6 +67,18 @@ func TestServerMux(t *testing.T) {
 			`,
 		},
 		{
+			name:    "WithNamespace",
+			muxOpts: []ServeMuxOption{WithNamespace("foobar")},
+			expect: `
+				# HELP foobar_http_server_requests_pending Number of HTTP server requests currently pending.
+				# TYPE foobar_http_server_requests_pending gauge
+				foobar_http_server_requests_pending{handler="/"} 1
+				# HELP foobar_http_server_requests_total Total number of HTTP server requests completed.
+				# TYPE foobar_http_server_requests_total gauge
+				foobar_http_server_requests_total{handler="/"} 3
+			`,
+		},
+		{
 			name:    "WithCodeAndMethod",
 			muxOpts: []ServeMuxOption{WithCode(), WithMethod()},
 			expect: `

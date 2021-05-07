@@ -33,6 +33,11 @@ func WithMethod() ServeMuxOption {
 	return muxOptFunc(func(mux *ServeMux) { mux.method = true })
 }
 
+// WithNamespace returns a mux option that adds a namespace to all metrics.
+func WithNamespace(namespace string) ServeMuxOption {
+	return muxOptFunc(func(mux *ServeMux) { mux.namespace = namespace })
+}
+
 // WithConstLabels returns a mux option that adds constant labels to all metrics.
 // Metrics with the same fully-qualified name must have the same label names in
 // their ConstLabels.
@@ -86,6 +91,7 @@ type ServeMux struct {
 	requests *prometheus.GaugeVec
 	pending  *prometheus.GaugeVec
 
+	namespace   string
 	constLabels prometheus.Labels
 	method      bool
 	code        bool
@@ -100,11 +106,13 @@ func NewServeMux(options ...ServeMuxOption) *ServeMux {
 	mux.requests = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:        "http_server_requests_total",
 		Help:        "Total number of HTTP server requests completed.",
+		Namespace:   mux.namespace,
 		ConstLabels: mux.constLabels,
 	}, coalesce("handler", maybe("method", mux.method), maybe("code", mux.code)))
 	mux.pending = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name:        "http_server_requests_pending",
 		Help:        "Number of HTTP server requests currently pending.",
+		Namespace:   mux.namespace,
 		ConstLabels: mux.constLabels,
 	}, coalesce("handler", maybe("method", mux.method)))
 	return &mux
