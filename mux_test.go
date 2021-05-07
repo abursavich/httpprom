@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
@@ -51,6 +52,18 @@ func TestServerMux(t *testing.T) {
 				# HELP http_server_requests_total Total number of HTTP server requests completed.
 				# TYPE http_server_requests_total gauge
 				http_server_requests_total{handler="/",method="get"} 3
+			`,
+		},
+		{
+			name:    "WithConstLabels",
+			muxOpts: []ServeMuxOption{WithConstLabels(prometheus.Labels{"foo": "bar"})},
+			expect: `
+				# HELP http_server_requests_pending Number of HTTP server requests currently pending.
+				# TYPE http_server_requests_pending gauge
+				http_server_requests_pending{foo="bar",handler="/"} 1
+				# HELP http_server_requests_total Total number of HTTP server requests completed.
+				# TYPE http_server_requests_total gauge
+				http_server_requests_total{foo="bar",handler="/"} 3
 			`,
 		},
 		{

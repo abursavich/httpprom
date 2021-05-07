@@ -33,6 +33,13 @@ func WithMethod() ServeMuxOption {
 	return muxOptFunc(func(mux *ServeMux) { mux.method = true })
 }
 
+// WithConstLabels returns a mux option that adds constant labels to all metrics.
+// Metrics with the same fully-qualified name must have the same label names in
+// their ConstLabels.
+func WithConstLabels(labels prometheus.Labels) ServeMuxOption {
+	return muxOptFunc(func(mux *ServeMux) { mux.constLabels = labels })
+}
+
 // A HandlerOption changes the default behavior of a handler.
 type HandlerOption interface {
 	applyHandlerOpt(*handlerConfig)
@@ -79,8 +86,9 @@ type ServeMux struct {
 	requests *prometheus.GaugeVec
 	pending  *prometheus.GaugeVec
 
-	method bool
-	code   bool
+	constLabels prometheus.Labels
+	method      bool
+	code        bool
 }
 
 // NewServeMux returns a new mux with the given options.
@@ -90,12 +98,14 @@ func NewServeMux(options ...ServeMuxOption) *ServeMux {
 		opt.applyMuxOpt(&mux)
 	}
 	mux.requests = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "http_server_requests_total",
-		Help: "Total number of HTTP server requests completed.",
+		Name:        "http_server_requests_total",
+		Help:        "Total number of HTTP server requests completed.",
+		ConstLabels: mux.constLabels,
 	}, coalesce("handler", maybe("method", mux.method), maybe("code", mux.code)))
 	mux.pending = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-		Name: "http_server_requests_pending",
-		Help: "Number of HTTP server requests currently pending.",
+		Name:        "http_server_requests_pending",
+		Help:        "Number of HTTP server requests currently pending.",
+		ConstLabels: mux.constLabels,
 	}, coalesce("handler", maybe("method", mux.method)))
 	return &mux
 }
