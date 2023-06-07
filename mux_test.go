@@ -15,8 +15,7 @@ import (
 func TestServerMux(t *testing.T) {
 	tests := []struct {
 		name    string
-		muxOpts []ServeMuxOption
-		hndOpts []HandlerOption
+		muxOpts []Option
 		expect  string
 	}{
 		{
@@ -32,7 +31,7 @@ func TestServerMux(t *testing.T) {
 		},
 		{
 			name:    "WithCode",
-			muxOpts: []ServeMuxOption{WithCode()},
+			muxOpts: []Option{WithCode()},
 			expect: `
 				# HELP http_server_requests_pending Number of HTTP server requests currently pending.
 				# TYPE http_server_requests_pending gauge
@@ -44,7 +43,7 @@ func TestServerMux(t *testing.T) {
 		},
 		{
 			name:    "WithMethod",
-			muxOpts: []ServeMuxOption{WithMethod()},
+			muxOpts: []Option{WithMethod()},
 			expect: `
 				# HELP http_server_requests_pending Number of HTTP server requests currently pending.
 				# TYPE http_server_requests_pending gauge
@@ -56,7 +55,7 @@ func TestServerMux(t *testing.T) {
 		},
 		{
 			name:    "WithConstLabels",
-			muxOpts: []ServeMuxOption{WithConstLabels(prometheus.Labels{"foo": "bar"})},
+			muxOpts: []Option{WithConstLabels(prometheus.Labels{"foo": "bar"})},
 			expect: `
 				# HELP http_server_requests_pending Number of HTTP server requests currently pending.
 				# TYPE http_server_requests_pending gauge
@@ -68,7 +67,7 @@ func TestServerMux(t *testing.T) {
 		},
 		{
 			name:    "WithNamespace",
-			muxOpts: []ServeMuxOption{WithNamespace("foobar")},
+			muxOpts: []Option{WithNamespace("foobar")},
 			expect: `
 				# HELP foobar_http_server_requests_pending Number of HTTP server requests currently pending.
 				# TYPE foobar_http_server_requests_pending gauge
@@ -80,7 +79,7 @@ func TestServerMux(t *testing.T) {
 		},
 		{
 			name:    "WithCodeAndMethod",
-			muxOpts: []ServeMuxOption{WithCode(), WithMethod()},
+			muxOpts: []Option{WithCode(), WithMethod()},
 			expect: `
 				# HELP http_server_requests_pending Number of HTTP server requests currently pending.
 				# TYPE http_server_requests_pending gauge
@@ -90,30 +89,15 @@ func TestServerMux(t *testing.T) {
 				http_server_requests_total{code="200",handler="/",method="get"} 3
 			`,
 		},
-		{
-			name:    "WithName",
-			hndOpts: []HandlerOption{WithName("test")},
-			expect: `
-				# HELP http_server_requests_pending Number of HTTP server requests currently pending.
-				# TYPE http_server_requests_pending gauge
-				http_server_requests_pending{handler="test"} 1
-				# HELP http_server_requests_total Total number of HTTP server requests completed.
-				# TYPE http_server_requests_total gauge
-				http_server_requests_total{handler="test"} 3
-			`,
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ch := make(chan bool)
 			mux := NewServeMux(tt.muxOpts...)
-			mux.HandleFunc("/",
-				func(w http.ResponseWriter, r *http.Request) {
-					<-ch
-					<-ch
-				},
-				tt.hndOpts...,
-			)
+			mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+				<-ch
+				<-ch
+			})
 			srv := httptest.NewServer(mux)
 			defer srv.Close()
 			defer close(ch) // NB: srv.Close() blocks until all requests are complete
